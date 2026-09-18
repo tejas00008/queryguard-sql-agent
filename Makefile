@@ -1,7 +1,7 @@
 VENV ?= .venv
 PY   := $(VENV)/bin/python
 
-.PHONY: install db-sqlite db-postgres pg-up pg-down pg-verify test lint clean
+.PHONY: install db-sqlite db-postgres pg-up pg-down pg-verify bird eval eval-oracle ask test lint clean
 
 install:
 	uv venv --python 3.12 $(VENV)
@@ -24,6 +24,18 @@ pg-verify:
 
 pg-down:
 	docker compose down
+
+bird:
+	$(PY) data/scripts/fetch_bird.py
+
+eval:
+	$(PY) -m evaluation.harness --limit $(or $(N),15)
+
+eval-oracle:
+	$(PY) -m evaluation.harness --oracle --limit $(or $(N),50)
+
+ask:
+	@$(PY) -m queryguard ask "$(Q)" --show-sql
 
 test:
 	$(VENV)/bin/pytest -q
