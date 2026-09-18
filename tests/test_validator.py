@@ -162,3 +162,26 @@ def test_existing_limit_is_left_alone():
     """Rewriting the model's own LIMIT would change the answer to 'top 500'."""
     sql, added = enforce_limit("SELECT * FROM users LIMIT 500", max_rows=200)
     assert not added and "500" in sql
+
+
+def test_catalog_handles_reserved_word_table_names(tmp_path):
+    """BIRD's `financial` database has a table named `order`. An unquoted
+    PRAGMA table_info(order) is a syntax error, which took down a whole
+    evaluation run before the identifiers were quoted."""
+    import sqlite3
+
+    from queryguard.schema.catalog import load_sqlite_catalog
+
+    path = tmp_path / "reserved.sqlite"
+    conn = sqlite3.connect(path)
+    conn.execute('CREATE TABLE "order" (order_id INTEGER PRIMARY KEY, "select" TEXT)')
+    conn.execute('CREATE TABLE "group" (id INTEGER PRIMARY KEY, order_id INTEGER '
+                 'REFERENCES "order"(order_id))')
+    conn.execute('INSERT INTO "order" VALUES (1, \'x\')')
+    conn.commit()
+    conn.close()
+
+    catalog = load_sqlite_catalog(path, with_counts=True)
+    assert catalog.has_table("order")
+    assert catalog.has_column("order", "select")
+    assert catalog.get("order").row_count == 1

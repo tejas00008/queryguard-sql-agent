@@ -16,6 +16,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
+def _quote(identifier: str) -> str:
+    """Quote an identifier for interpolation into SQL.
+
+    Necessary because real schemas use reserved words as table names -- BIRD's
+    `financial` database has a table called `order` -- and an unquoted
+    PRAGMA table_info(order) is a syntax error. Interpolation is unavoidable
+    here: PRAGMA and FROM take an identifier, not a bindable parameter.
+    Doubling any embedded quote is what makes that interpolation safe.
+    """
+    return '"' + identifier.replace('"', '""') + '"'
+
+
 @dataclass(frozen=True)
 class Column:
     name: str
@@ -126,13 +138,13 @@ def load_sqlite_catalog(path: str | Path, with_counts: bool = False) -> Catalog:
         for name in names:
             table = Table(name=name.lower())
             for _cid, col, ctype, notnull, _dflt, pk in conn.execute(
-                f"PRAGMA table_info({name})"
+                f"PRAGMA table_info({_quote(name)})"
             ):
                 table.columns.append(Column(
                     name=col.lower(), type=(ctype or "TEXT").upper(),
                     nullable=not notnull, primary_key=bool(pk),
                 ))
-            for row in conn.execute(f"PRAGMA foreign_key_list({name})"):
+            for row in conn.execute(f"PRAGMA foreign_key_list({_quote(name)})"):
                 # (id, seq, table, from, to, on_update, on_delete, match)
                 table.foreign_keys.append(ForeignKey(
                     from_table=name.lower(), from_column=str(row[3]).lower(),
@@ -140,7 +152,9 @@ def load_sqlite_catalog(path: str | Path, with_counts: bool = False) -> Catalog:
                     to_column=str(row[4]).lower() if row[4] else "",
                 ))
             if with_counts:
-                table.row_count = conn.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]
+                table.row_count = conn.execute(
+                    f"SELECT COUNT(*) FROM {_quote(name)}"
+                ).fetchone()[0]
             catalog.tables[table.name] = table
         return catalog
     finally:
@@ -196,7 +210,7 @@ def load_postgres_catalog(dsn: str, with_counts: bool = False) -> Catalog:
 
         if with_counts:
             for tname, table in catalog.tables.items():
-                cur.execute(f"SELECT COUNT(*) FROM {tname}")
+                cur.execute(f"SELECT COUNT(*) FROM {_quote(tname)}")
                 table.row_count = cur.fetchone()[0]
 
     return catalog
