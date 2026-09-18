@@ -59,13 +59,17 @@ Dataset "today" is fixed at **2026-09-18**. Nothing in the data occurs after it.
 
 Every number below comes from running both the naive and the correct query
 against the generated database. The verification lives in
-`tests/test_saas_dataset.py` (Stage 6) so these claims fail loudly if the
-generator changes.
+`tests/test_saas_dataset.py`, so these claims fail loudly if the generator
+changes rather than quietly becoming fiction.
+
+"Active" means a `last_seen_at` inside a **31-day** window ending at the fixed
+dataset "today". The window matters: the soft-delete numbers below are not
+reproducible without it.
 
 | Trap | What a naive query does | Measured error |
 |---|---|---|
 | **Event rename** — `login` was renamed `user_login` 150 days ago; both names exist in history | Filters `event_name = 'user_login'` | Undercounts logins by **36%** (15,440 vs 24,270) |
-| **Soft delete** — `users.deleted_at` | Counts by `last_seen_at` alone | Overcounts active users by **10%** (797 vs 725) |
+| **Soft delete** — `users.deleted_at` | Counts by `last_seen_at` alone | Overcounts active users by **10%** (797 vs 725, over a 31-day window) |
 | **Two churn definitions** — `accounts.churned_at` vs `subscriptions.status = 'canceled'` | Picks one silently | The two disagree on **3** accounts (52 vs 55) |
 | **Missing attribution** — 26% of accounts are organic with no `account_sources` row | `JOIN account_sources` | Drops **103 of 400** accounts |
 | **Invited ≠ activated** — `created_at` vs `activated_at` | Counts `created_at` | **486 of 2,660** users never activated |
