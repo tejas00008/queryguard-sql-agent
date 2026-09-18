@@ -1,0 +1,29 @@
+# Postgres is here for one reason: it lets me enforce read-only at the
+# database level (a SELECT-only role + default_transaction_read_only +
+# statement_timeout) instead of trusting the application layer.
+#
+# BIRD ships as SQLite, so the benchmark runs there. The SaaS schema is
+# loaded into both engines so I can compare them on identical questions.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: queryguard-pg
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: queryguard
+    ports:
+      # 5433 on the host so this never fights a local Postgres on 5432.
+      - "5433:5432"
+    volumes:
+      - ./docker/init:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d queryguard"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:
