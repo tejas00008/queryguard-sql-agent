@@ -46,11 +46,11 @@ carries the ambiguity and cross-engine analysis.
 | plans | 4 |
 | campaigns | 12 |
 | accounts | 400 |
-| account_sources | 299 |
+| account_sources | 297 |
 | users | 2,660 |
-| subscriptions | 472 |
-| invoices | 3,795 |
-| support_tickets | 791 |
+| subscriptions | 475 |
+| invoices | 3,523 |
+| support_tickets | 788 |
 | events | 106,464 |
 
 Dataset "today" is fixed at **2026-09-18**. Nothing in the data occurs after it.
@@ -80,6 +80,23 @@ says so is correct behaviour. One that picks it silently is not.
 
 Same `--seed` produces a byte-identical SQLite file (verified by sha256 across
 regeneration). Default seed `20260918` is set in `.env.example`.
+
+Row counts also matched exactly when the generator was run on a different
+machine and CPU architecture (arm64 and x86_64), which means the seeded
+generation doesn't depend on platform floating-point behaviour. That matters
+because the evaluation questions have gold answers computed against this data.
+
+## Safety verification
+
+`data/scripts/verify_readonly.py` attacks the Postgres role with 11 write and
+DDL statements, twice: once in a normal session, and once after the role turns
+off its own `default_transaction_read_only` (which a role is permitted to do,
+so the first pass alone proves little). It asserts on *effects* -- row counts,
+actual privileges, table count, column count -- not on whether a statement
+raised, because a non-owner `GRANT` returns successfully while changing nothing.
+
+Current result: **22 attempts, none changed any state.** Run it yourself with
+`make pg-verify`.
 
 ### Known limitations
 

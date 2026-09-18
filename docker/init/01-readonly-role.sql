@@ -17,6 +17,13 @@ ALTER ROLE queryguard_ro SET default_transaction_read_only = on;
 ALTER ROLE queryguard_ro SET statement_timeout = '10s';
 
 -- No temp tables, no scratch space to write into.
+--
+-- This must be REVOKE ... FROM PUBLIC, not FROM queryguard_ro. Postgres grants
+-- TEMPORARY on a database to PUBLIC by default, so revoking it from the role
+-- leaves the PUBLIC grant in place and does nothing. I found this by turning
+-- default_transaction_read_only off from inside the role's own session --
+-- which a role is allowed to do -- and watching CREATE TEMP TABLE succeed.
+REVOKE TEMPORARY ON DATABASE queryguard FROM PUBLIC;
 REVOKE TEMPORARY ON DATABASE queryguard FROM queryguard_ro;
 REVOKE ALL ON SCHEMA public FROM queryguard_ro;
 GRANT USAGE ON SCHEMA public TO queryguard_ro;
