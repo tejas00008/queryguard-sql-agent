@@ -8,6 +8,7 @@ dependencies = [
     "pydantic-settings>=2.5",
     "python-dotenv>=1.0",
     "psycopg[binary]>=3.2",
+    "sqlglot>=25.0",
 ]
 
 [project.optional-dependencies]
