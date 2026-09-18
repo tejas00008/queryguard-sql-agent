@@ -42,6 +42,19 @@ FORBIDDEN_NODES: dict[type[exp.Expression], str] = {
     exp.Grant: "GRANT", exp.TruncateTable: "TRUNCATE",
 }
 
+# EXCEPT and INTERSECT parse to their own node types, not to exp.Union. Older
+# sqlglot releases lack the shared SetOperation base, so fall back to naming
+# them. Missing these rejected valid read-only SQL as a FORBIDDEN_CONSTRUCT --
+# and because that code routes to "unsafe request", a legitimate set operation
+# was reported as an attempted attack.
+_SET_OPS: tuple[type[exp.Expression], ...] = (
+    (exp.SetOperation,) if hasattr(exp, "SetOperation")
+    else (exp.Union, exp.Except, exp.Intersect)
+)
+READ_ONLY_ROOTS: tuple[type[exp.Expression], ...] = (
+    exp.Select, exp.Subquery, exp.With, *_SET_OPS,
+)
+
 # PRAGMA, ATTACH, VACUUM, SET and friends land here -- sqlglot parses anything
 # it doesn't model as a Command node, so this catches the long tail.
 ALLOWED_COMMANDS: set[str] = set()
@@ -137,7 +150,7 @@ def validate(sql: str, catalog: Catalog, dialect: str = "sqlite") -> ValidationV
             code=IssueCode.FORBIDDEN_CONSTRUCT,
             message="SELECT ... INTO writes a new table and is not permitted"))
 
-    if not isinstance(tree, exp.Select | exp.Union | exp.Subquery) and not issues:
+    if not isinstance(tree, READ_ONLY_ROOTS) and not issues:
         issues.append(ValidationIssue(
             code=IssueCode.FORBIDDEN_CONSTRUCT,
             message=f"expected a SELECT statement, got {type(tree).__name__.upper()}"))
