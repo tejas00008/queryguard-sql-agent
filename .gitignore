@@ -21,3 +21,4 @@ data/bird/
 traces/
 .cache/llm/
 evaluation/runs/
+.cache/
