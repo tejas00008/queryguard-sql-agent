@@ -1,0 +1,23 @@
+# env / secrets
+.env
+*.env
+!.env.example
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# data — generated or downloaded, never committed
+data/db/
+data/bird/
+*.sqlite
+*.sqlite3
+
+# run artifacts
+traces/
+.cache/llm/
+evaluation/runs/
