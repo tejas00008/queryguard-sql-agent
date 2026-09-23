@@ -22,3 +22,6 @@ traces/
 .cache/llm/
 evaluation/runs/
 .cache/
+
+# macOS
+.DS_Store
